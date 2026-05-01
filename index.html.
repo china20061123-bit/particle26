@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Janken RPG - Super Special Effects</title>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Noto+Sans+JP:wght@900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --hp-color: #ff4757;
+            --accent: #f1c40f;
+            --electric: #00d2ff;
+        }
+
+        body {
+            font-family: 'Noto Sans JP', sans-serif;
+            background: #1a1a1a;
+            background-image: radial-gradient(circle at 20% 30%, #4a5568, transparent), linear-gradient(180deg, #0f172a 0%, #1e293b 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            color: #f8fafc;
+            overflow: hidden;
+        }
+
+        #game-container {
+            width: 850px;
+            background: rgba(30, 41, 59, 0.95);
+            border: 6px solid #475569;
+            border-radius: 24px;
+            box-shadow: 0 0 50px rgba(0,0,0,0.8);
+            padding: 30px;
+            text-align: center;
+            position: relative;
+        }
+
+        /* スクリーンシェイク（画面揺れ）用 */
+        .shake { animation: shake-anim 0.4s; }
+        @keyframes shake-anim {
+            0%, 100% { transform: translate(0, 0); }
+            20% { transform: translate(-10px, 10px); }
+            40% { transform: translate(10px, -10px); }
+            60% { transform: translate(-10px, -10px); }
+            80% { transform: translate(10px, 10px); }
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            font-family: 'Press Start 2P', cursive;
+        }
+
+        /* ライフ（ハート）のアニメーション */
+        .hp-container { display: flex; gap: 5px; }
+        .heart {
+            font-size: 2rem;
+            color: var(--hp-color);
+            transition: all 0.5s;
+            display: inline-block;
+        }
+        .heart.drop {
+            animation: heart-drop 0.8s forwards;
+        }
+        @keyframes heart-drop {
+            0% { transform: translateY(0) rotate(0); opacity: 1; }
+            20% { transform: translateY(-10px) rotate(20deg); }
+            100% { transform: translateY(100px) rotate(45deg); opacity: 0; }
+        }
+
+        .battle-scene {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 40px;
+            background: rgba(0,0,0,0.5);
+            border-radius: 20px;
+            margin-bottom: 30px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .character { width: 40%; position: relative; }
+        .hero-icon, .enemy-icon {
+            font-size: 100px;
+            display: block;
+            margin-bottom: 10px;
+            transition: all 0.3s;
+        }
+
+        /* 電撃エフェクト */
+        .electric-shock {
+            animation: electric-anim 0.1s infinite;
+            filter: drop-shadow(0 0 15px var(--electric)) brightness(2);
+        }
+        @keyframes electric-anim {
+            0% { transform: translate(2px, 2px); }
+            50% { transform: translate(-2px, -2px); }
+            100% { transform: translate(2px, -2px); }
+        }
+
+        /* 敵の爆発・退場 */
+        .enemy-dead {
+            animation: explode-out 0.8s forwards;
+        }
+        @keyframes explode-out {
+            0% { transform: scale(1); filter: brightness(1); }
+            30% { transform: scale(1.4); filter: brightness(3) saturate(2); }
+            100% { transform: scale(0); filter: brightness(5); opacity: 0; }
+        }
+
+        .move-display {
+            font-size: 4rem;
+            height: 110px;
+            background: #fff;
+            color: #333;
+            border-radius: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-top: 15px;
+            border: 4px solid var(--accent);
+            visibility: hidden;
+        }
+
+        .controls { display: flex; justify-content: center; gap: 20px; }
+        .btn {
+            background: linear-gradient(180deg, #475569, #1e293b);
+            border: 2px solid #94a3b8;
+            color: white; padding: 15px 30px; font-size: 1.2rem;
+            border-radius: 12px; cursor: pointer; transition: 0.2s;
+        }
+        .btn:hover:not(:disabled) { border-color: var(--accent); transform: scale(1.05); }
+
+        /* カットイン */
+        #cutin {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0);
+            font-size: 80px; color: #fff; text-shadow: 0 0 20px #ff4757;
+            z-index: 100; pointer-events: none; font-weight: 900;
+        }
+        .show-cutin { animation: cutin-anim 0.8s ease-out forwards; }
+        @keyframes cutin-anim {
+            0% { transform: translate(-50%, -50%) scale(0); opacity: 0; }
+            40% { transform: translate(-50%, -50%) scale(1.2); opacity: 1; }
+            100% { transform: translate(-50%, -50%) scale(1); opacity: 0; }
+        }
+
+        #overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.9); display: none;
+            flex-direction: column; justify-content: center; align-items: center; z-index: 200;
+        }
+    </style>
+</head>
+<body id="body">
+
+    <div id="game-container">
+        <div id="cutin">いざ勝負！</div>
+
+        <div class="header">
+            <div id="level-display">LEVEL 1</div>
+            <div class="hp-container" id="hp-box">
+                <span class="heart">❤</span><span class="heart">❤</span><span class="heart">❤</span><span class="heart">❤</span><span class="heart">❤</span>
+            </div>
+        </div>
+
+        <div id="message" style="font-size: 1.4rem; height: 2rem; margin: 15px 0; color: var(--accent);">運命のじゃんけんが始まる...</div>
+
+        <div class="battle-scene">
+            <div class="character">
+                <span class="hero-icon">🦸‍♂️</span>
+                <h3>勇者</h3>
+                <div class="move-display" id="player-move"></div>
+            </div>
+            <div style="font-size: 2rem; font-weight: bold;">VS</div>
+            <div class="character">
+                <span class="enemy-icon" id="enemy-sprite">👹</span>
+                <h3 id="enemy-name">ゴブリン</h3>
+                <div class="move-display" id="enemy-move"></div>
+            </div>
+        </div>
+
+        <div class="controls">
+            <button class="btn" onclick="playGame('rock')">✊ グー</button>
+            <button class="btn" onclick="playGame('scissors')">✌ チョキ</button>
+            <button class="btn" onclick="playGame('paper')">✋ パー</button>
+        </div>
+
+        <div id="overlay">
+            <h2 id="overlay-title" style="font-size: 2.5rem; margin-bottom: 20px;"></h2>
+            <button class="btn" onclick="location.reload()">再挑戦する</button>
+        </div>
+    </div>
+
+    <script>
+        const enemies = [
+            { name: "ゴブリン", sprite: "👹" },
+            { name: "大蜘蛛", sprite: "🕷️" },
+            { name: "山賊", sprite: "🥷" },
+            { name: "岩石巨人", sprite: "🗿" },
+            { name: "魔王", sprite: "👑" }
+        ];
+        const moves = { rock: { icon: "✊", beats: "scissors" }, scissors: { icon: "✌", beats: "paper" }, paper: { icon: "✋", beats: "rock" } };
+
+        let hp = 5;
+        let level = 1;
+        let isLocked = false;
+
+        function playGame(playerChoice) {
+            if (isLocked) return;
+            isLocked = true;
+
+            const enemyChoice = Object.keys(moves)[Math.floor(Math.random() * 3)];
+            const cutin = document.getElementById('cutin');
+            
+            // 演出リセット
+            document.getElementById('player-move').style.visibility = "hidden";
+            document.getElementById('enemy-move').style.visibility = "hidden";
+            
+            cutin.classList.remove('show-cutin');
+            void cutin.offsetWidth;
+            cutin.classList.add('show-cutin');
+
+            setTimeout(() => {
+                document.getElementById('player-move').innerText = moves[playerChoice].icon;
+                document.getElementById('enemy-move').innerText = moves[enemyChoice].icon;
+                document.getElementById('player-move').style.visibility = "visible";
+                document.getElementById('enemy-move').style.visibility = "visible";
+                
+                judge(playerChoice, enemyChoice);
+            }, 500);
+        }
+
+        function judge(p, e) {
+            const msg = document.getElementById('message');
+            const enemySprite = document.getElementById('enemy-sprite');
+            const container = document.getElementById('game-container');
+
+            if (p === e) {
+                msg.innerText = "あいこ！勝負は続く！";
+                isLocked = false;
+            } else if (moves[p].beats === e) {
+                // 勝利：電撃と爆発
+                msg.innerText = "会心の一撃！";
+                enemySprite.classList.add('electric-shock');
+                
+                setTimeout(() => {
+                    enemySprite.classList.remove('electric-shock');
+                    enemySprite.classList.add('enemy-dead');
+                    setTimeout(() => {
+                        level++;
+                        if (level > 5) {
+                            showOverlay("伝説の英雄誕生！");
+                        } else {
+                            enemySprite.classList.remove('enemy-dead');
+                            updateLevel();
+                            isLocked = false;
+                        }
+                    }, 800);
+                }, 600);
+            } else {
+                // 敗北：画面揺れとハート落下
+                msg.innerText = "痛恨のダメージ！";
+                container.classList.add('shake');
+                const hearts = document.querySelectorAll('.heart');
+                hearts[hp-1].classList.add('drop');
+                hp--;
+
+                setTimeout(() => {
+                    container.classList.remove('shake');
+                    if (hp <= 0) {
+                        showOverlay("冒険は終わった...");
+                    } else {
+                        isLocked = false;
+                    }
+                }, 500);
+            }
+        }
+
+        function updateLevel() {
+            document.getElementById('level-display').innerText = `LEVEL ${level}`;
+            document.getElementById('enemy-name').innerText = enemies[level-1].name;
+            document.getElementById('enemy-sprite').innerText = enemies[level-1].sprite;
+            document.getElementById('message').innerText = `${enemies[level-1].name}が現れた！`;
+            document.getElementById('player-move').style.visibility = "hidden";
+            document.getElementById('enemy-move').style.visibility = "hidden";
+        }
+
+        function showOverlay(txt) {
+            document.getElementById('overlay').style.display = "flex";
+            document.getElementById('overlay-title').innerText = txt;
+        }
+    </script>
+</body>
+</html>
